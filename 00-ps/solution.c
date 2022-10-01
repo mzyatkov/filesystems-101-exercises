@@ -38,8 +38,13 @@ int read_cmdline(struct process_info *process_info)
                 process_info->argv = realloc(process_info->argv, process_info->argv_len * sizeof(char *));
             }
             process_info->argv[i] = NULL;
-            if ((getdelim(&process_info->argv[i], &len, ' ', fp)) == -1)
+            if ((getdelim(&process_info->argv[i], &len, '\0', fp)) == -1)
             {
+                free(process_info->argv[i]);
+                process_info->argv[i] = NULL;
+                break;
+            }
+            if (process_info->argv[i][0] == '\0') {
                 free(process_info->argv[i]);
                 process_info->argv[i] = NULL;
                 break;
