@@ -79,6 +79,11 @@ int read_environ(struct process_info *process_info)
                 process_info->envp[i] = NULL;
                 break;
             }
+            if (process_info->envp[i][0] == '\0') {
+                free(process_info->envp[i]);
+                process_info->envp[i] = NULL;
+                break;
+            }
         }
         fclose(fp);
     }
@@ -94,7 +99,7 @@ int read_exe(struct process_info *process_info)
     char newpathname[PATH_MAX];
     sprintf(newpathname, "/proc/%d/exe", process_info->pid);
     process_info->exe = calloc(PATH_MAX , sizeof(char));
-    return readlink(newpathname, process_info->exe, PATH_MAX);
+    return (readlink(newpathname, process_info->exe, PATH_MAX) == -1);
 }
 int get_process_info(struct process_info *process_info)
 {
@@ -173,8 +178,10 @@ void ps(void)
             continue;
         } // skip if dir is not process
 
-        get_process_info(process_info);
+        int err = get_process_info(process_info);
+        if (!err) {
         report_process(process_info->pid, process_info->exe, process_info->argv, process_info->envp);
+        }
         clean_process_info(process_info);
     };
 
