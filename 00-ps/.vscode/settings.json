@@ -1,0 +1,9 @@
+{
+    "makefile.launchConfigurations": [
+        {
+            "cwd": "/home/mihail/Documents/filesystems-101-exercises/00-ps",
+            "binaryPath": "/home/mihail/Documents/filesystems-101-exercises/00-ps/a.out",
+            "binaryArgs": []
+        }
+    ]
+}

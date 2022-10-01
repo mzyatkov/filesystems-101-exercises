@@ -1,4 +1,4 @@
-#include <solution.h>
+#include "solution.h"
 
 int main(int argc, char **argv)
 {
@@ -8,3 +8,5 @@ int main(int argc, char **argv)
 	ps();
 	return 0;
 }
+
+
