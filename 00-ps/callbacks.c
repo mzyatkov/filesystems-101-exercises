@@ -12,7 +12,7 @@ void report_process(pid_t pid, const char *exe, char **argv, char **envp)
 	for (char **x = argv; *x != NULL; ++x)
 		printf("'%s', ", *x);
 	printf("]\n");
-
+	
 	printf("  envp = [");
 	for (char **x = envp; *x != NULL; ++x)
 		printf("'%s', ", *x);
