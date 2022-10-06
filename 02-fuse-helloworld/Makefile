@@ -16,6 +16,6 @@ a.out: $(SRC_SOLUTION) $(HDR_SOLUTION) $(SRC_STDLIB) $(HDR_STDLIB)
 		-std=gnu11 -Wall -Wextra -Werror \
 		-I. -I../stdlib -I/usr/include/fuse3 \
 		-D_GNU_SOURCE -DFUSE_USE_VERSION=31 \
-		-lfuse3 \
+		-pthread -lfuse3 \
 		-g -Og \
 		$(SRC_SOLUTION) $(SRC_STDLIB)
