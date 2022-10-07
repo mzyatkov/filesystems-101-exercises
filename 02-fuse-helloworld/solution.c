@@ -46,11 +46,9 @@ static int write_hellofs(const char *path, const char *buf, size_t size, off_t o
 
 static int open_hellofs(const char *path, struct fuse_file_info *fi)
 {
+	(void)fi;
 	if (strcmp(path, HELLO_PATH) != 0)
 		return -ENOENT;
-
-	if ((fi->flags & 3) != O_RDONLY)
-		return -EACCES;
 	return 0;
 }
 static int getattr_hellofs(const char *path, struct stat *stbuf, struct fuse_file_info *fi)
