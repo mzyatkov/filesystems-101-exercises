@@ -44,7 +44,7 @@ void lsof(void)
 
 		char name[sizeof("/proc/%u/fd/0123456789") + sizeof(int)*3];
 		char *fdlink;
-		size_t baseofs;
+		int baseofs;
 		baseofs = sprintf(name, "/proc/%u/fd/", process_info->pid);
 		DIR *d_fd = opendir(name);
 		if (d_fd) {
@@ -61,9 +61,12 @@ void lsof(void)
 				} else {
 					report_error(name, errno);
 					free(fdlink);
+					exit(1);
 				}
 			}
 			closedir(d_fd);
+		} else {
+			report_error(name, errno);
 		}
 
     };
