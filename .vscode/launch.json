@@ -6,11 +6,12 @@
     "configurations": [
 
 
+
         {
             "name": "Pusk", //I named it Pusk because i can 
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/00-ps/a.out", //path to your programs exe and exe name
+            "program": "${workspaceFolder}/01-lsof/a.out", //path to your programs exe and exe name
             "args": [],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
