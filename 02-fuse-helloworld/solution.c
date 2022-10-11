@@ -48,7 +48,7 @@ static int open_hellofs(const char *path, struct fuse_file_info *fi)
 {
 	(void)fi;
 	if (strcmp(path, HELLO_PATH) != 0)
-		return -ENOENT;
+		{return -ENOENT;}
 	return 0;
 }
 static int getattr_hellofs(const char *path, struct stat *stbuf, struct fuse_file_info *fi)
