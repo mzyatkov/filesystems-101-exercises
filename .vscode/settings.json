@@ -1,0 +1,9 @@
+{
+    "makefile.launchConfigurations": [
+        {
+            "cwd": "/home/mihail/Documents/filesystems-101-exercises/03-io_uring",
+            "binaryPath": "/home/mihail/Documents/filesystems-101-exercises/03-io_uring/a.out",
+            "binaryArgs": []
+        }
+    ]
+}

@@ -1,5 +1,4 @@
 #include <solution.h>
-
 #include <unistd.h>
 #include <fcntl.h>
 #include <err.h>
