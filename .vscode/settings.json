@@ -5,5 +5,9 @@
             "binaryPath": "/home/mihail/Documents/filesystems-101-exercises/03-io_uring/a.out",
             "binaryArgs": []
         }
-    ]
+    ],
+    "files.associations": {
+        "io_uring.h": "c",
+        "liburing.h": "c"
+    }
 }

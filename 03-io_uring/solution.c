@@ -4,6 +4,8 @@
 #include <malloc.h>
 #include <string.h>
 #include <liburing.h>
+// #include <liburing/io_uring.h>
+#include <errno.h>
 #include <stdlib.h>
 #include <fcntl.h>
 
@@ -19,19 +21,31 @@ struct io_data {
     struct iovec iov;
 };
 
+static int setup_context(unsigned int entries, struct io_uring *ring)
+{
+	int ret;
+
+	ret = io_uring_queue_init(entries, ring, 0);
+	if (ret < 0) {
+		fprintf(stderr, "queue_init: %s\n", strerror(-ret));
+		return -1;
+	}
+
+	return 0;
+}
+
 static int get_file_size(int fd, off_t *size) {
     struct stat st;
     int ret;
-    if ((ret = fstat(fd, &st)) < 0 )
+    if ((ret = fstat(fd, &st)) < 0 ) {
+        fprintf(stderr, "fstat return %d\n", ret);
         return ret;
-    if(S_ISREG(st.st_mode)) {
-        *size = st.st_size;
-        return 0;
     }
-    return -1;
+    *size = st.st_size;
+    return 0;
 }
 
-static void queue_prepped(struct io_uring *ring, struct io_data *data) {
+static void queue_prep(struct io_uring *ring, struct io_data *data) {
     struct io_uring_sqe *sqe;
 
     sqe = io_uring_get_sqe(ring);
@@ -55,6 +69,7 @@ static int queue_read(struct io_uring *ring, off_t size, off_t offset) {
 
     sqe = io_uring_get_sqe(ring);
     if (!sqe) {
+        fprintf(stderr, "!sqe error\n");
         free(data);
         return 1;
     }
@@ -78,7 +93,7 @@ static void queue_write(struct io_uring *ring, struct io_data *data) {
     data->iov.iov_base = data + 1;
     data->iov.iov_len = data->first_len;
 
-    queue_prepped(ring, data);
+    queue_prep(ring, data);
     io_uring_submit(ring);
 }
 
@@ -120,6 +135,7 @@ int copy_file(struct io_uring *ring, off_t insize) {
         if (had_reads != reads) {
             ret = io_uring_submit(ring);
             if (ret < 0) {
+                fprintf(stderr, "submit error had_reads!=reads %d\n", ret);
                 return ret;
             }
         }
@@ -132,6 +148,7 @@ int copy_file(struct io_uring *ring, off_t insize) {
             if (!got_comp) {
                 // printf("io_uring_wait_cqe\n");
                 ret = io_uring_wait_cqe(ring, &cqe);
+                fprintf(stderr, "!got_comp %d\n", ret);
                 got_comp = 1;
             } else {
                 ret = io_uring_peek_cqe(ring, &cqe);
@@ -141,24 +158,26 @@ int copy_file(struct io_uring *ring, off_t insize) {
                 }
             }
             if (ret < 0) {
+                fprintf(stderr, "peek_cqe return %d\n", ret);
                 return ret;
             }
             if (!cqe)
                 break;
-            // printf("io_uring_cqe_get_data\n");
+            fprintf(stderr, "io_uring_cqe_get_data\n");
             data = io_uring_cqe_get_data(cqe);
             if (cqe->res < 0) {
                 if (cqe->res == -EAGAIN) {
-                    queue_prepped(ring, data);
+                    queue_prep(ring, data);
                     io_uring_cqe_seen(ring, cqe);
                     continue;
                 }
+                fprintf(stderr, "cqe_get_data error %d\n", cqe->res);
                 return -errno;
             } else if (cqe->res != (int)data->iov.iov_len) {
                 /* short read/write; adjust and requeue */
                 data->iov.iov_base += cqe->res;
                 data->iov.iov_len -= cqe->res;
-                queue_prepped(ring, data);
+                queue_prep(ring, data);
                 io_uring_cqe_seen(ring, cqe);
                 continue;
             }
@@ -177,6 +196,25 @@ int copy_file(struct io_uring *ring, off_t insize) {
         }
     }
 
+    /* wait out pending writes */
+	while (writes) {
+		struct io_data *data;
+
+		ret = io_uring_wait_cqe(ring, &cqe);
+		if (ret) {
+			fprintf(stderr, "wait_cqe=%d\n", ret);
+			return 1;
+		}
+		if (cqe->res < 0) {
+			fprintf(stderr, "write res=%d\n", cqe->res);
+			return 1;
+		}
+		data = io_uring_cqe_get_data(cqe);
+		free(data);
+		writes--;
+		io_uring_cqe_seen(ring, cqe);
+	}
+
     return 0;
 }
 
@@ -185,23 +223,21 @@ int copy(int in, int out)
     infd = in;
     outfd = out;
 
-	struct io_uring_params params;
     struct io_uring ring;
-    memset(&params, 0, sizeof(params));
-
     /**
      * Создаем инстанс io_uring, не используем никаких кастомных опций.
-     * Емкость SQ и CQ буфера указываем как 4 вхождений.
+     * Емкость SQ и CQ буфера указываем как 4 вхождения.
      */
-    int ret = io_uring_queue_init_params(QD, &ring, &params);
-    assert(ret == 0);
+    if (setup_context(QD, &ring))
+		return 1;
 
     off_t insize =0;
     if (get_file_size(infd, &insize)) {
         return 1;
     }
-	ret = copy_file(&ring, insize);
-
+	int ret;
+    ret = copy_file(&ring, insize);
+    fprintf(stderr,"ret= %d\n", ret);
     io_uring_queue_exit(&ring);
 
 	return ret;
