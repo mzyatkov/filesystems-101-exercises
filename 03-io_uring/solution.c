@@ -146,9 +146,8 @@ int copy_file(struct io_uring *ring, off_t insize) {
             struct io_data *data;
 
             if (!got_comp) {
-                // printf("io_uring_wait_cqe\n");
                 ret = io_uring_wait_cqe(ring, &cqe);
-                fprintf(stderr, "!got_comp %d\n", ret);
+                // fprintf(stderr, wait_cqe= %d\n", ret);
                 got_comp = 1;
             } else {
                 ret = io_uring_peek_cqe(ring, &cqe);
@@ -163,7 +162,7 @@ int copy_file(struct io_uring *ring, off_t insize) {
             }
             if (!cqe)
                 break;
-            fprintf(stderr, "io_uring_cqe_get_data\n");
+            // fprintf(stderr, "io_uring_cqe_get_data\n");
             data = io_uring_cqe_get_data(cqe);
             if (cqe->res < 0) {
                 if (cqe->res == -EAGAIN) {
@@ -214,7 +213,6 @@ int copy_file(struct io_uring *ring, off_t insize) {
 		writes--;
 		io_uring_cqe_seen(ring, cqe);
 	}
-
     return 0;
 }
 
@@ -237,7 +235,6 @@ int copy(int in, int out)
     }
 	int ret;
     ret = copy_file(&ring, insize);
-    fprintf(stderr,"ret= %d\n", ret);
     io_uring_queue_exit(&ring);
 
 	return ret;
