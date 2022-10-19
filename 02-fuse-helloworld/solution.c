@@ -77,7 +77,7 @@ static int getattr_hellofs(const char *path, struct stat *stbuf, struct fuse_fil
 		stbuf->st_size = 19;
 		return 0;
 	}
-	return -ENOENT;
+	return -EROFS;
 }
 static int readdir_hellofs(const char *path, void *buf, fuse_fill_dir_t filler, off_t offset, struct fuse_file_info *fi, enum fuse_readdir_flags rf)
 {
@@ -100,6 +100,7 @@ static int readdir_hellofs(const char *path, void *buf, fuse_fill_dir_t filler, 
 static int access_hellofs(const char *path, int mode) {
 	if (mode & W_OK)
         return -EROFS;
+	fprintf(stderr, "access\n");
 	return access(path, mode);
 }
 static int setxattr_hellofs(const char *path, const char *name, const char *value, size_t size, int flags)
@@ -191,6 +192,28 @@ static int truncate_hellofs(const char *path, off_t size, struct fuse_file_info 
   	(void)size;
   	return -EROFS;
 }
+static int callback_utimens (const char *path, const struct timespec tv[2],
+			 struct fuse_file_info *fi)
+{
+	(void)path;
+  	(void)tv;
+	(void)fi;
+  	return -EROFS;	
+}
+static int create_hellofs(const char *path , mode_t mode, struct fuse_file_info *fi){
+	(void)path;
+	(void)mode;
+	(void)fi;
+	return -EROFS;
+}
+static int write_buf_hellofs(const char *path, struct fuse_bufvec *buf, off_t off,
+			  struct fuse_file_info *fi) {
+				(void)path;
+				(void)buf;
+				(void)off;
+				(void)fi;
+				return -EROFS;
+			  }
 
 static const struct fuse_operations hellofs_ops = {
 	.getattr = getattr_hellofs,
@@ -210,7 +233,10 @@ static const struct fuse_operations hellofs_ops = {
 	.symlink = symlink_hellofs,
 	.unlink = unlink_hellofs,
 	.link = link_hellofs,
-	.rmdir = rmdir_hellofs
+	.rmdir = rmdir_hellofs,
+	.utimens = callback_utimens,
+	.create = create_hellofs,
+	.write_buf = write_buf_hellofs
 };
 
 int helloworld(const char *mntp)
