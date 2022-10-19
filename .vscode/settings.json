@@ -4,6 +4,11 @@
             "cwd": "/home/mihail/Documents/filesystems-101-exercises/03-io_uring",
             "binaryPath": "/home/mihail/Documents/filesystems-101-exercises/03-io_uring/a.out",
             "binaryArgs": []
+        },
+        {
+            "cwd": "/home/mihail/Documents/filesystems-101-exercises/02-fuse-helloworld",
+            "binaryPath": "/home/mihail/Documents/filesystems-101-exercises/02-fuse-helloworld/a.out",
+            "binaryArgs": ["testdir"]
         }
     ],
     "files.associations": {
