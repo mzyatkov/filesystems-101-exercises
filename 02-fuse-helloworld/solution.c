@@ -49,7 +49,7 @@ static int open_hellofs(const char *path, struct fuse_file_info *fi)
 {
 	if (strcmp(path, HELLO_PATH) != 0)
 	{
-		return -EROFS;
+		return -ENOENT;
 	}
 	int flags = fi->flags;
 	
