@@ -100,7 +100,7 @@ static int getattr_hellofs(const char *path, struct stat *stbuf, struct fuse_fil
 		stbuf->st_size = 19;
 		return 0;
 	}
-	return -EROFS;
+	return -ENOENT;
 }
 
 // static int access_hellofs(const char *path, int mode) {
