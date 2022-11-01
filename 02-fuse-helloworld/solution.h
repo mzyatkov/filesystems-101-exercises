@@ -16,6 +16,10 @@
    PID is the id of a process that reads "hello", and "\n" is the newline.
    It is OK to report the size of "hello" that does not match the content.
 
+<<<<<<< HEAD
    Any attempt write to a file must report EROFS.  
+=======
+   Any attempt write to the FS must report EROFS.
+>>>>>>> master
 */
 int helloworld(const char *mntp);
