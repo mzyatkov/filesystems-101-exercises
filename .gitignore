@@ -10,4 +10,5 @@
 !.vscode/*.code-snippets
 03-io_uring/out
 03-io_uring/in
-img/
+**/img
+**/out
