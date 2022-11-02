@@ -66,14 +66,18 @@ int process_buffer(char *buffer, int block_size, int *remain_to_write)
 {
 	struct dirent *entry;
 	off_t cur_offset = 0;
+	char *name = malloc(256*sizeof(char));
 	while (cur_offset < block_size && cur_offset < *remain_to_write)
 	{
 		entry = (struct dirent *)(buffer + cur_offset);
 		char type = (entry->d_type == EXT2_FT_DIR) ? 'd' : 'f';
+		strncpy(name, entry->d_name, (size_t)entry->d_name_len);
+		name[(size_t)entry->d_name_len] = '\0';
 		report_file(entry->d_ino, type, entry->d_name);
 
 		cur_offset += entry->d_reclen;
 	}
+
 	if (cur_offset >= *remain_to_write)
 	{
 		*remain_to_write = 0;
@@ -82,6 +86,8 @@ int process_buffer(char *buffer, int block_size, int *remain_to_write)
 	{
 		*remain_to_write -= block_size;
 	}
+
+	free(name);
 	return 0;
 }
 int copy_ndir_block(int img, int block_size, int block_id, int *remain_to_write, char *buffer)
