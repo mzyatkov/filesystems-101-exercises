@@ -73,7 +73,7 @@ int process_buffer(char *buffer, int block_size, int *remain_to_write)
 		char type = (entry->d_type == EXT2_FT_DIR) ? 'd' : 'f';
 		strncpy(name, entry->d_name, (size_t)entry->d_name_len);
 		name[(size_t)entry->d_name_len] = '\0';
-		report_file(entry->d_ino, type, entry->d_name);
+		report_file(entry->d_ino, type, name);
 
 		cur_offset += entry->d_reclen;
 	}
