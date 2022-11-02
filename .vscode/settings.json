@@ -16,6 +16,11 @@
             "cwd": "/home/mihail/Documents/filesystems-101-exercises/04-ext2-read-file",
             "binaryPath": "/home/mihail/Documents/filesystems-101-exercises/04-ext2-read-file/a.out",
             "binaryArgs": []
+        },
+        {
+            "cwd": "/home/mihail/Documents/filesystems-101-exercises/05-ext2-read-dir",
+            "binaryPath": "/home/mihail/Documents/filesystems-101-exercises/05-ext2-read-dir/a.out",
+            "binaryArgs": []
         }
     ],
     "files.associations": {

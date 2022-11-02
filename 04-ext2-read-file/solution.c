@@ -3,7 +3,6 @@
 #include <unistd.h>
 #include <errno.h>
 
-#define check(err)
 
 int read_super_block(int img, struct ext2_super_block *super_block)
 {
