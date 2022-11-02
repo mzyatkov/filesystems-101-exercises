@@ -8,11 +8,20 @@
         {
             "cwd": "/home/mihail/Documents/filesystems-101-exercises/02-fuse-helloworld",
             "binaryPath": "/home/mihail/Documents/filesystems-101-exercises/02-fuse-helloworld/a.out",
-            "binaryArgs": ["testdir"]
+            "binaryArgs": [
+                "testdir"
+            ]
+        },
+        {
+            "cwd": "/home/mihail/Documents/filesystems-101-exercises/04-ext2-read-file",
+            "binaryPath": "/home/mihail/Documents/filesystems-101-exercises/04-ext2-read-file/a.out",
+            "binaryArgs": []
         }
     ],
     "files.associations": {
         "io_uring.h": "c",
-        "liburing.h": "c"
+        "liburing.h": "c",
+        "ext2fs.h": "c",
+        "unistd.h": "c"
     }
 }
