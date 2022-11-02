@@ -10,10 +10,10 @@ struct dirent {
 	char d_name[256];
 };
 
-void report_file(int inode_nr, char type, const char *name)
-{
-	printf("%d %c %s\n", inode_nr, type, name);
-}
+// void report_file(int inode_nr, char type, const char *name)
+// {
+// 	printf("%d %c %s\n", inode_nr, type, name);
+// }
 
 int read_super_block(int img, struct ext2_super_block *super_block)
 {
