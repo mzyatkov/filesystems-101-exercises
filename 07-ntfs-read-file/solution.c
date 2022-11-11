@@ -35,13 +35,18 @@ int dump_file(int img, const char *path, int out)
 	ntfs_attr *attr_struct = NULL;
 	attr_struct = ntfs_attr_open(inode, AT_DATA, AT_UNNAMED, 0);
 
-	u32 block_size = volume->mft_record_size;
+
+	u32 block_size = 0;
+	if (inode->mft_no < 2) {
+		block_size = volume->mft_record_size;
+	}
 
 	s64 offset = 0;
 	s64 write_size = 0;
 	s64 read_size = 0;
 	char buffer[PATH_MAX] = {};
-	
+
+
 	while (1)
 	{
 		if (block_size == 0)
