@@ -26,6 +26,11 @@
             "cwd": "/home/mihail/Documents/filesystems-101-exercises/06-ext2-walk-path",
             "binaryPath": "/home/mihail/Documents/filesystems-101-exercises/06-ext2-walk-path/a.out",
             "binaryArgs": []
+        },
+        {
+            "cwd": "/home/mihail/Documents/filesystems-101-exercises/07-ntfs-read-file",
+            "binaryPath": "/home/mihail/Documents/filesystems-101-exercises/07-ntfs-read-file/a.out",
+            "binaryArgs": []
         }
     ],
     "files.associations": {
@@ -33,6 +38,12 @@
         "liburing.h": "c",
         "ext2fs.h": "c",
         "unistd.h": "c",
-        "solution_by_number.h": "c"
+        "solution_by_number.h": "c",
+        "dir.h": "c",
+        "types.h": "c",
+        "attrib.h": "c",
+        "volume.h": "c",
+        "errno.h": "c",
+        "stdio.h": "c"
     }
 }
