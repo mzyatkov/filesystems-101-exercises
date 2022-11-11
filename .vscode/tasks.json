@@ -10,7 +10,7 @@
                 "owner": "c",
                 "fileLocation": [
                     "relative",
-                    "${workspaceFolder}"
+                    "${fileDirname}"
                 ],
                 "pattern": {
                     "regexp": "^(.*):(\\d+):(\\d+):\\s+(warning|error):\\s+(.*)$",

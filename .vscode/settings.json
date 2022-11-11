@@ -21,12 +21,18 @@
             "cwd": "/home/mihail/Documents/filesystems-101-exercises/05-ext2-read-dir",
             "binaryPath": "/home/mihail/Documents/filesystems-101-exercises/05-ext2-read-dir/a.out",
             "binaryArgs": []
+        },
+        {
+            "cwd": "/home/mihail/Documents/filesystems-101-exercises/06-ext2-walk-path",
+            "binaryPath": "/home/mihail/Documents/filesystems-101-exercises/06-ext2-walk-path/a.out",
+            "binaryArgs": []
         }
     ],
     "files.associations": {
         "io_uring.h": "c",
         "liburing.h": "c",
         "ext2fs.h": "c",
-        "unistd.h": "c"
+        "unistd.h": "c",
+        "solution_by_number.h": "c"
     }
 }
