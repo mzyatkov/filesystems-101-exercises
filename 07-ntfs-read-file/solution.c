@@ -19,19 +19,20 @@ int dump_file(int img, const char *path, int out)
 	sprintf(path_to_fd, "/proc/self/fd/%d", img);
 
 	char filename[NAME_MAX];
-	int err = readlink(path_to_fd, filename, NAME_MAX);
-	if (err < 0)
+	int count = readlink(path_to_fd, filename, NAME_MAX);
+	if (count < 0)
 	{
-		return err;
+		return count;
 	}
+	filename[count] = 0;
 
-	ntfs_volume *volume;
+	ntfs_volume *volume = NULL;
 	volume = ntfs_mount(filename, NTFS_MNT_RDONLY);
 
-	ntfs_inode *inode;
+	ntfs_inode *inode = NULL;
 	inode = ntfs_pathname_to_inode(volume, NULL, path);
 
-	ntfs_attr *attr_struct;
+	ntfs_attr *attr_struct = NULL;
 	attr_struct = ntfs_attr_open(inode, AT_DATA, AT_UNNAMED, 0);
 
 	u32 block_size = 0;
