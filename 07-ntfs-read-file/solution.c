@@ -28,7 +28,10 @@ int dump_file(int img, const char *path, int out)
 
 	ntfs_volume *volume = NULL;
 	volume = ntfs_mount(filename, NTFS_MNT_RDONLY);
-
+	if (!volume) {
+		return -errno;
+	}
+	
 	ntfs_inode *inode = NULL;
 	inode = ntfs_pathname_to_inode(volume, NULL, path);
 	if (!inode) {
