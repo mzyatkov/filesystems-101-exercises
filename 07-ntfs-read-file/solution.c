@@ -31,10 +31,18 @@ int dump_file(int img, const char *path, int out)
 
 	ntfs_inode *inode = NULL;
 	inode = ntfs_pathname_to_inode(volume, NULL, path);
+	if (!inode) {
+		ntfs_umount(volume, FALSE);
+		return -errno;
+	}
 
 	ntfs_attr *attr_struct = NULL;
 	attr_struct = ntfs_attr_open(inode, AT_DATA, AT_UNNAMED, 0);
-
+	if (!attr_struct) {
+		ntfs_inode_close(inode);
+		ntfs_umount(volume, FALSE);
+		return -errno;
+	}
 
 	u32 block_size = 0;
 	if (inode->mft_no < 2) {
@@ -58,7 +66,7 @@ int dump_file(int img, const char *path, int out)
 			read_size = ntfs_attr_mst_pread(attr_struct, offset, 1, block_size, buffer);
 			if (read_size > 0)
 			{
-				read_size += block_size;
+				read_size = block_size * read_size;
 			}
 		}
 
