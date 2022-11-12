@@ -25,30 +25,36 @@ int dump_file(int img, const char *path, int out)
 		return count;
 	}
 	filename[count] = 0;
-
 	ntfs_volume *volume = NULL;
 	volume = ntfs_mount(filename, NTFS_MNT_RDONLY);
-	if (!volume) {
+	if (!volume)
+	{
 		return -errno;
 	}
-	
+
 	ntfs_inode *inode = NULL;
 	inode = ntfs_pathname_to_inode(volume, NULL, path);
-	if (!inode) {
+
+	if (!inode)
+	{
+		int err = -errno;
 		ntfs_umount(volume, FALSE);
-		return -errno;
+		return err;
 	}
 
 	ntfs_attr *attr_struct = NULL;
 	attr_struct = ntfs_attr_open(inode, AT_DATA, AT_UNNAMED, 0);
-	if (!attr_struct) {
+	if (!attr_struct)
+	{
+		int err = -errno;
 		ntfs_inode_close(inode);
 		ntfs_umount(volume, FALSE);
-		return -errno;
+		return err;
 	}
 
 	u32 block_size = 0;
-	if (inode->mft_no < 2) {
+	if (inode->mft_no < 2)
+	{
 		block_size = volume->mft_record_size;
 	}
 
@@ -56,7 +62,6 @@ int dump_file(int img, const char *path, int out)
 	s64 write_size = 0;
 	s64 read_size = 0;
 	char buffer[PATH_MAX] = {};
-
 
 	while (1)
 	{
@@ -86,7 +91,7 @@ int dump_file(int img, const char *path, int out)
 		{
 			return -errno;
 		}
-		
+
 		offset += read_size;
 	}
 
