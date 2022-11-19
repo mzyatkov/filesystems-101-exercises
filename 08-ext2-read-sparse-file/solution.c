@@ -3,6 +3,8 @@
 #include <unistd.h>
 #include <errno.h>
 
+#define SPARSE_BLOCK 1
+#define NON_SPARSE_BLOCK 0
 
 int read_super_block(int img, struct ext2_super_block *super_block)
 {
@@ -67,48 +69,67 @@ int write_buffer(int out, char *buffer, int block_size, int *remain_to_write)
 }
 int copy_ndir_block(int img, int out, int block_size, int block_id, int *remain_to_write, char *buffer)
 {
-	read_block(img, block_size, block_id, buffer);
-	write_buffer(out, buffer, block_size, remain_to_write);
+	int block_type = (block_id == 0) ? SPARSE_BLOCK : NON_SPARSE_BLOCK; 
+	if (block_type == NON_SPARSE_BLOCK) {
+		read_block(img, block_size, block_id, buffer);
+		write_buffer(out, buffer, block_size, remain_to_write);
+		return 0;
+	} else {
+		int cur_block_size = (*remain_to_write > block_size) ? block_size : *remain_to_write;
+		char * const null_block = calloc(cur_block_size, sizeof(char));
+		write(out, null_block, cur_block_size);
+		*remain_to_write -= cur_block_size;
+		free(null_block);
+		return 0;
+	}
 	return 0;
 }
 int copy_indir_block(int img, int out, int block_size, int block_id, int *remain_to_write, char *buffer)
 {
-	read_block(img, block_size, block_id, buffer);
+	int block_type = (block_id == 0) ? SPARSE_BLOCK : NON_SPARSE_BLOCK; 
+	if (block_type == NON_SPARSE_BLOCK) {
+		read_block(img, block_size, block_id, buffer);
+	} else {
+		int cur_block_size = (*remain_to_write > block_size) ? block_size : *remain_to_write;
+		char * const null_block = calloc(cur_block_size, sizeof(char));
+		write(out, null_block, cur_block_size);
+		*remain_to_write -= cur_block_size;
+		free(null_block);
+		return 0;
+	} 
+	
 	int *buffer_addr_iter = (int *)buffer;
 
 	char *buffer_indir_block = malloc(block_size * sizeof(char));
 
 	for (unsigned long i = 0; i < block_size / sizeof(int) && *remain_to_write > 0; i++)
 	{
-		if (buffer_addr_iter[i] == 0)
-		{
-			break;
-		}
-		else
-		{
 			copy_ndir_block(img, out, block_size, buffer_addr_iter[i], remain_to_write, buffer_indir_block);
-		}
 	}
 	free(buffer_indir_block);
 	return 0;
 }
 int copy_dndir_block(int img, int out, int block_size, int block_id, int *remain_to_write, char *buffer)
 {
-	read_block(img, block_size, block_id, buffer);
+	int block_type = (block_id == 0) ? SPARSE_BLOCK : NON_SPARSE_BLOCK; 
+	if (block_type == NON_SPARSE_BLOCK) {
+		read_block(img, block_size, block_id, buffer);
+	} else {
+		int cur_block_size = (*remain_to_write > block_size) ? block_size : *remain_to_write;
+		char * const null_block = calloc(cur_block_size, sizeof(char));
+		write(out, null_block, cur_block_size);
+		*remain_to_write -= cur_block_size;
+		free(null_block);
+		return 0;
+	} 
+	
 	int *buffer_addr_iter = (int *)buffer;
 
 	char *buffer_dndir_block = malloc(block_size * sizeof(char));
 
 	for (unsigned long i = 0; i < block_size / sizeof(int) && *remain_to_write > 0; i++)
 	{
-		if (buffer_addr_iter[i] == 0)
-		{
-			break;
-		}
-		else
-		{
-			copy_indir_block(img, out, block_size, buffer_addr_iter[i], remain_to_write, buffer_dndir_block);
-		}
+		copy_indir_block(img, out, block_size, buffer_addr_iter[i], remain_to_write, buffer_dndir_block);
 	}
 	free(buffer_dndir_block);
 	return 0;
@@ -122,10 +143,6 @@ int copy_inode_content(int img, int out, int block_size, struct ext2_inode *inod
 	// i_block в индексном дескрипторе файла представляет собой массив из 15 адресов блоков.
 	for (int i = 0; i < EXT2_N_BLOCKS && remain_to_write > 0; i++)
 	{
-		if (inode->i_block[i] == 0)
-		{
-			break;
-		}
 		if (i < EXT2_NDIR_BLOCKS)
 		{
 			copy_ndir_block(img, out, block_size, inode->i_block[i], &remain_to_write, buffer);
