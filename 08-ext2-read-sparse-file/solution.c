@@ -67,6 +67,16 @@ int write_buffer(int out, char *buffer, int block_size, int *remain_to_write)
 	}
 	return 0;
 }
+int write_null_block(int out, int block_size, int *remain_to_write) {
+	
+	int cur_block_size = (*remain_to_write > block_size) ? block_size : *remain_to_write;
+	char * const null_block = calloc(cur_block_size, sizeof(char));
+	write(out, null_block, cur_block_size);
+	*remain_to_write -= cur_block_size;
+	free(null_block);
+	return 0;
+
+}
 int copy_ndir_block(int img, int out, int block_size, int block_id, int *remain_to_write, char *buffer)
 {
 	int block_type = (block_id == 0) ? SPARSE_BLOCK : NON_SPARSE_BLOCK; 
@@ -75,27 +85,17 @@ int copy_ndir_block(int img, int out, int block_size, int block_id, int *remain_
 		write_buffer(out, buffer, block_size, remain_to_write);
 		return 0;
 	} else {
-		int cur_block_size = (*remain_to_write > block_size) ? block_size : *remain_to_write;
-		char * const null_block = calloc(cur_block_size, sizeof(char));
-		write(out, null_block, cur_block_size);
-		*remain_to_write -= cur_block_size;
-		free(null_block);
+		write_null_block(out, block_size, remain_to_write);
 		return 0;
 	}
 	return 0;
 }
+
 int copy_indir_block(int img, int out, int block_size, int block_id, int *remain_to_write, char *buffer)
 {
 	int block_type = (block_id == 0) ? SPARSE_BLOCK : NON_SPARSE_BLOCK; 
 	if (block_type == NON_SPARSE_BLOCK) {
 		read_block(img, block_size, block_id, buffer);
-	} else {
-		int cur_block_size = (*remain_to_write > block_size) ? block_size : *remain_to_write;
-		char * const null_block = calloc(cur_block_size, sizeof(char));
-		write(out, null_block, cur_block_size);
-		*remain_to_write -= cur_block_size;
-		free(null_block);
-		return 0;
 	} 
 	
 	int *buffer_addr_iter = (int *)buffer;
@@ -104,7 +104,11 @@ int copy_indir_block(int img, int out, int block_size, int block_id, int *remain
 
 	for (unsigned long i = 0; i < block_size / sizeof(int) && *remain_to_write > 0; i++)
 	{
+		if (block_type == SPARSE_BLOCK) {
+			write_null_block(out, block_size, remain_to_write);
+		} else {
 			copy_ndir_block(img, out, block_size, buffer_addr_iter[i], remain_to_write, buffer_indir_block);
+		}
 	}
 	free(buffer_indir_block);
 	return 0;
@@ -114,13 +118,6 @@ int copy_dndir_block(int img, int out, int block_size, int block_id, int *remain
 	int block_type = (block_id == 0) ? SPARSE_BLOCK : NON_SPARSE_BLOCK; 
 	if (block_type == NON_SPARSE_BLOCK) {
 		read_block(img, block_size, block_id, buffer);
-	} else {
-		int cur_block_size = (*remain_to_write > block_size) ? block_size : *remain_to_write;
-		char * const null_block = calloc(cur_block_size, sizeof(char));
-		write(out, null_block, cur_block_size);
-		*remain_to_write -= cur_block_size;
-		free(null_block);
-		return 0;
 	} 
 	
 	int *buffer_addr_iter = (int *)buffer;
@@ -129,7 +126,7 @@ int copy_dndir_block(int img, int out, int block_size, int block_id, int *remain
 
 	for (unsigned long i = 0; i < block_size / sizeof(int) && *remain_to_write > 0; i++)
 	{
-		copy_indir_block(img, out, block_size, buffer_addr_iter[i], remain_to_write, buffer_dndir_block);
+			copy_indir_block(img, out, block_size, buffer_addr_iter[i], remain_to_write, buffer_dndir_block);
 	}
 	free(buffer_dndir_block);
 	return 0;
@@ -145,6 +142,7 @@ int copy_inode_content(int img, int out, int block_size, struct ext2_inode *inod
 	{
 		if (i < EXT2_NDIR_BLOCKS)
 		{
+			printf("copy dndir %d\n", inode->i_block[0]);
 			copy_ndir_block(img, out, block_size, inode->i_block[i], &remain_to_write, buffer);
 		}
 		else if (i == EXT2_IND_BLOCK)

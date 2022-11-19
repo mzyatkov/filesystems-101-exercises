@@ -31,6 +31,11 @@
             "cwd": "/home/mihail/Documents/filesystems-101-exercises/07-ntfs-read-file",
             "binaryPath": "/home/mihail/Documents/filesystems-101-exercises/07-ntfs-read-file/a.out",
             "binaryArgs": []
+        },
+        {
+            "cwd": "/home/mihail/Documents/filesystems-101-exercises/08-ext2-read-sparse-file",
+            "binaryPath": "/home/mihail/Documents/filesystems-101-exercises/08-ext2-read-sparse-file/a.out",
+            "binaryArgs": []
         }
     ],
     "files.associations": {
