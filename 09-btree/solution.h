@@ -8,6 +8,8 @@
  */
 struct btree;
 
+struct btree_node;
+
 /* Allocate an empty btree with node sizes between L and 2*L. */
 struct btree* btree_alloc(unsigned int L);
 /* Release all memory allocated to @t. */

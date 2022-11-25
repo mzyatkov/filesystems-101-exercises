@@ -36,6 +36,11 @@
             "cwd": "/home/mihail/Documents/filesystems-101-exercises/08-ext2-read-sparse-file",
             "binaryPath": "/home/mihail/Documents/filesystems-101-exercises/08-ext2-read-sparse-file/a.out",
             "binaryArgs": []
+        },
+        {
+            "cwd": "/home/mihail/Documents/filesystems-101-exercises/09-btree",
+            "binaryPath": "/home/mihail/Documents/filesystems-101-exercises/09-btree/a.out",
+            "binaryArgs": []
         }
     ],
     "files.associations": {
@@ -49,6 +54,9 @@
         "attrib.h": "c",
         "volume.h": "c",
         "errno.h": "c",
-        "stdio.h": "c"
+        "stdio.h": "c",
+        "solution.h": "c",
+        "fs_malloc.h": "c",
+        "stdlib.h": "c"
     }
 }
