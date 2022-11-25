@@ -2,3 +2,7 @@
 a.out
 **/a.out
 **/.vscode
+
+**/vgcore*
+**/img
+**/out
