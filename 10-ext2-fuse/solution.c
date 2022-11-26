@@ -46,8 +46,8 @@ static int read_ext2(const char *path, char *buf, size_t size, off_t offset, str
 		return inode_nr;
 	}
 	get_inode_struct_by_nr(glob_img, inode_nr, &inode, &glob_super_block);
-	copy_inode_content(glob_img, buf, glob_block_size, &inode, offset, size);
-	return size;
+	int read_size = copy_inode_content(glob_img, buf, glob_block_size, &inode, offset, size);
+	return read_size;
 
 }
 void report_file(int inode_nr, char type, const char *name, fuse_fill_dir_t filler, void *buf)

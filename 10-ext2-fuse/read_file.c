@@ -71,7 +71,15 @@ int copy_inode_content(int img, char *out_buffer, int block_size, struct ext2_in
 {
 	char *buffer = malloc(block_size * sizeof(char));
 	off_t already_written = 0;
-    assert(inode->i_size >= offset + size);
+	if (inode->i_size < offset)
+	{
+		return 0;
+	} else if (inode->i_size < offset + (off_t)size)
+	{
+		size = inode->i_size - offset;
+	}
+	printf("size: %d %ld %ld\n", inode->i_size, offset, size);
+    // assert(inode->i_size >= offset + size);
 
 
 	// i_block в индексном дескрипторе файла представляет собой массив из 15 адресов блоков.
@@ -100,7 +108,7 @@ int copy_inode_content(int img, char *out_buffer, int block_size, struct ext2_in
 		}
 	}
 	free(buffer);
-	return 0;
+	return size;
 }
 
 
