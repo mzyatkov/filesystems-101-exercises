@@ -1,37 +1,49 @@
 #include "read_file.h"
 
-static int write_buffer(char *out_buffer, char *buffer, int block_size, off_t *already_written, off_t offset, size_t size)
-{
+struct file_pointer {
+	off_t already_written;
+	off_t offset;
+	off_t size;
+	char *out_buffer;
+};
 
-    if (*already_written >= offset && *already_written < offset + (off_t)size)
+static int write_buffer(char *buffer, int block_size, struct file_pointer *file_pointer)
+{
+    if (file_pointer->offset > 0)
     {
-        if (*already_written + block_size < offset + (off_t)size)
-        {
-            memcpy(out_buffer + *already_written - offset, buffer, block_size);
-            *already_written += block_size;
-        }
+		if (file_pointer->offset < block_size) {
+			size_t read_size = (file_pointer->size < block_size - file_pointer->offset) ? file_pointer->size : block_size - file_pointer->offset;
+            memcpy(file_pointer->out_buffer + file_pointer->already_written, buffer + file_pointer->offset, read_size);
+			file_pointer->offset = 0;
+			file_pointer->size -= read_size;
+			file_pointer->already_written += read_size;
+		}
         else
         {
-            memcpy(out_buffer + *already_written - offset, buffer, offset + size - *already_written);
-            *already_written = offset + size;
+			file_pointer->offset -= block_size;
         }
-    }
+    } else {
+		size_t read_size = (file_pointer->size < block_size) ? file_pointer->size : block_size;
+		memcpy(file_pointer->out_buffer + file_pointer->already_written, buffer, read_size);
+		file_pointer->already_written += read_size;
+		file_pointer->size -= read_size;
+	}
 	return 0;
 }
-static int copy_ndir_block(int img, char *out_buffer, int block_size, int block_id, off_t *already_written, char *buffer, off_t offset, size_t size)
+static int copy_ndir_block(int img, int block_size, int block_id, char *buffer, struct file_pointer *file_pointer)
 {
 	read_block(img, block_size, block_id, buffer);
-	write_buffer(out_buffer, buffer, block_size, already_written, offset, size);
+	write_buffer(buffer, block_size, file_pointer);
 	return 0;
 }
-static int copy_indir_block(int img, char *out_buffer, int block_size, int block_id, off_t *already_written, char *buffer, off_t offset, size_t size)
+static int copy_indir_block(int img, int block_size, int block_id, char *buffer,struct file_pointer *file_pointer)
 {
 	read_block(img, block_size, block_id, buffer);
 	int *buffer_addr_iter = (int *)buffer;
 
 	char *buffer_indir_block = malloc(block_size * sizeof(char));
 
-	for (unsigned long i = 0; i < block_size / sizeof(int) && *already_written < offset + (off_t)size; i++)
+	for (unsigned long i = 0; i < block_size / sizeof(int) && file_pointer->already_written < file_pointer->size ; i++)
 	{
 		if (buffer_addr_iter[i] == 0)
 		{
@@ -39,20 +51,20 @@ static int copy_indir_block(int img, char *out_buffer, int block_size, int block
 		}
 		else
 		{
-			copy_ndir_block(img, out_buffer, block_size, buffer_addr_iter[i], already_written, buffer_indir_block, offset, size);
+			copy_ndir_block(img, block_size, buffer_addr_iter[i], buffer_indir_block, file_pointer); 
 		}
 	}
 	free(buffer_indir_block);
 	return 0;
 }
-static int copy_dndir_block(int img, char *out_buffer, int block_size, int block_id, off_t *already_written, char *buffer, off_t offset, size_t size)
+static int copy_dndir_block(int img, int block_size, int block_id, char *buffer, struct file_pointer *file_pointer)
 {
 	read_block(img, block_size, block_id, buffer);
 	int *buffer_addr_iter = (int *)buffer;
 
 	char *buffer_dndir_block = malloc(block_size * sizeof(char));
 
-	for (unsigned long i = 0; i < block_size / sizeof(int) && *already_written < offset + (off_t)size ; i++)
+	for (unsigned long i = 0; i < block_size / sizeof(int) && file_pointer->already_written < file_pointer->size ; i++)
 	{
 		if (buffer_addr_iter[i] == 0)
 		{
@@ -60,7 +72,7 @@ static int copy_dndir_block(int img, char *out_buffer, int block_size, int block
 		}
 		else
 		{
-			copy_indir_block(img, out_buffer, block_size, buffer_addr_iter[i], already_written, buffer_dndir_block, offset, size);
+			copy_indir_block(img, block_size, buffer_addr_iter[i], buffer_dndir_block,  file_pointer);
 		}
 	}
 	free(buffer_dndir_block);
@@ -69,8 +81,6 @@ static int copy_dndir_block(int img, char *out_buffer, int block_size, int block
 
 int copy_inode_content(int img, char *out_buffer, int block_size, struct ext2_inode *inode, off_t offset, size_t size)
 {
-	char *buffer = malloc(block_size * sizeof(char));
-	off_t already_written = 0;
 	if (inode->i_size < offset)
 	{
 		return 0;
@@ -78,12 +88,17 @@ int copy_inode_content(int img, char *out_buffer, int block_size, struct ext2_in
 	{
 		size = inode->i_size - offset;
 	}
-	printf("size: %d %ld %ld\n", inode->i_size, offset, size);
-    // assert(inode->i_size >= offset + size);
+	char *buffer = malloc(block_size * sizeof(char));
+	struct file_pointer *file_pointer = malloc(sizeof(struct file_pointer));
+	file_pointer->already_written = 0;
+	file_pointer->offset = offset;
+	file_pointer->size = size;
+	file_pointer->out_buffer = out_buffer;
+
 
 
 	// i_block в индексном дескрипторе файла представляет собой массив из 15 адресов блоков.
-	for (int i = 0; i < EXT2_N_BLOCKS && already_written < offset + (off_t)size; i++)
+	for (int i = 0; i < EXT2_N_BLOCKS && file_pointer->already_written < file_pointer->size; i++)
 	{
 		if (inode->i_block[i] == 0)
 		{
@@ -91,15 +106,15 @@ int copy_inode_content(int img, char *out_buffer, int block_size, struct ext2_in
 		}
 		if (i < EXT2_NDIR_BLOCKS)
 		{
-			copy_ndir_block(img, out_buffer, block_size, inode->i_block[i], &already_written, buffer, offset, size);
+			copy_ndir_block(img, block_size, inode->i_block[i],buffer, file_pointer);
 		}
 		else if (i == EXT2_IND_BLOCK)
 		{
-			copy_indir_block(img, out_buffer, block_size, inode->i_block[i], &already_written, buffer, offset, size);
+			copy_indir_block(img, block_size, inode->i_block[i],buffer, file_pointer);
 		}
 		else if (i == EXT2_DIND_BLOCK)
 		{
-			copy_dndir_block(img, out_buffer, block_size, inode->i_block[i], &already_written, buffer, offset, size);
+			copy_dndir_block(img, block_size, inode->i_block[i], buffer, file_pointer);
 		}
 		else
 		{
@@ -108,6 +123,7 @@ int copy_inode_content(int img, char *out_buffer, int block_size, struct ext2_in
 		}
 	}
 	free(buffer);
+	free(file_pointer);
 	return size;
 }
 
