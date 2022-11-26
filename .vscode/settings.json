@@ -41,6 +41,11 @@
             "cwd": "/home/mihail/Documents/filesystems-101-exercises/09-btree",
             "binaryPath": "/home/mihail/Documents/filesystems-101-exercises/09-btree/a.out",
             "binaryArgs": []
+        },
+        {
+            "cwd": "/home/mihail/Documents/filesystems-101-exercises/10-ext2-fuse",
+            "binaryPath": "/home/mihail/Documents/filesystems-101-exercises/10-ext2-fuse/a.out",
+            "binaryArgs": ["img" , "out"]
         }
     ],
     "files.associations": {
