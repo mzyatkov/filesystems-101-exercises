@@ -237,10 +237,7 @@ static int getattr_ext2(const char *path, struct stat *stbuf, struct fuse_file_i
 
 static void *init_ext2(struct fuse_conn_info *conn, struct fuse_config *cfg) {
 	(void)conn;
-	cfg->kernel_cache = 1;
-	cfg->uid = getuid();
-	cfg->gid = getgid();
-	cfg->umask = ~S_IRUSR;
+	(void)cfg;
 	return NULL;
 }
 

@@ -9,6 +9,8 @@ struct file_pointer {
 
 static int write_buffer(char *buffer, int block_size, struct file_pointer *file_pointer)
 {
+	printf("write_buffer: %ld %ld %ld\n", file_pointer->already_written, file_pointer->offset, file_pointer->size);
+
     if (file_pointer->offset > 0)
     {
 		if (file_pointer->offset < block_size) {
@@ -25,8 +27,8 @@ static int write_buffer(char *buffer, int block_size, struct file_pointer *file_
     } else {
 		size_t read_size = (file_pointer->size < block_size) ? file_pointer->size : block_size;
 		memcpy(file_pointer->out_buffer + file_pointer->already_written, buffer, read_size);
-		file_pointer->already_written += read_size;
 		file_pointer->size -= read_size;
+		file_pointer->already_written += read_size;
 	}
 	return 0;
 }
@@ -43,7 +45,7 @@ static int copy_indir_block(int img, int block_size, int block_id, char *buffer,
 
 	char *buffer_indir_block = malloc(block_size * sizeof(char));
 
-	for (unsigned long i = 0; i < block_size / sizeof(int) && file_pointer->already_written < file_pointer->size ; i++)
+	for (unsigned long i = 0; i < block_size / sizeof(int) && file_pointer->size > 0 ; i++)
 	{
 		if (buffer_addr_iter[i] == 0)
 		{
@@ -64,7 +66,7 @@ static int copy_dndir_block(int img, int block_size, int block_id, char *buffer,
 
 	char *buffer_dndir_block = malloc(block_size * sizeof(char));
 
-	for (unsigned long i = 0; i < block_size / sizeof(int) && file_pointer->already_written < file_pointer->size ; i++)
+	for (unsigned long i = 0; i < block_size / sizeof(int) && file_pointer->size > 0 ; i++)
 	{
 		if (buffer_addr_iter[i] == 0)
 		{
@@ -81,13 +83,6 @@ static int copy_dndir_block(int img, int block_size, int block_id, char *buffer,
 
 int copy_inode_content(int img, char *out_buffer, int block_size, struct ext2_inode *inode, off_t offset, size_t size)
 {
-	if (inode->i_size < offset)
-	{
-		return 0;
-	} else if (inode->i_size < offset + (off_t)size)
-	{
-		size = inode->i_size - offset;
-	}
 	char *buffer = malloc(block_size * sizeof(char));
 	struct file_pointer *file_pointer = malloc(sizeof(struct file_pointer));
 	file_pointer->already_written = 0;
@@ -98,7 +93,7 @@ int copy_inode_content(int img, char *out_buffer, int block_size, struct ext2_in
 
 
 	// i_block в индексном дескрипторе файла представляет собой массив из 15 адресов блоков.
-	for (int i = 0; i < EXT2_N_BLOCKS && file_pointer->already_written < file_pointer->size; i++)
+	for (int i = 0; i < EXT2_N_BLOCKS && file_pointer->size > 0; i++)
 	{
 		if (inode->i_block[i] == 0)
 		{
@@ -122,6 +117,8 @@ int copy_inode_content(int img, char *out_buffer, int block_size, struct ext2_in
 			return -1; // TODO
 		}
 	}
+	size -= file_pointer->size;
+
 	free(buffer);
 	free(file_pointer);
 	return size;
