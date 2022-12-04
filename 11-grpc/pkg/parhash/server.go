@@ -6,7 +6,7 @@ import (
 	"github.com/pkg/errors"
 	"golang.org/x/sync/semaphore"
 
-	hashpb "fs101ex/pkg/gen/hashsvc"
+	hashpb "fs101ex/pkg/gen/parhashsvc"
 	"google.golang.org/grpc"
 	"crypto/sha256"
 	"net"
@@ -72,7 +72,7 @@ func (s *Server) Start(ctx context.Context) (err error) {
 	}
 
 	srv := grpc.NewServer()
-	hashpb.RegisterHashSvcServer(srv, s)
+	hashpb.RegisterParallelHashSvcServer(srv , s)
 
 	s.wg.Add(2)
 	go func() {
@@ -99,7 +99,22 @@ func (s *Server) Stop() {
 	s.wg.Wait()
 }
 
-func (s *Server) Hash(ctx context.Context, req *hashpb.HashReq) (resp *hashpb.HashResp, err error) {
-	h := sha256.Sum256(req.Data)
-	return &hashpb.HashResp{Hash: h[:]}, nil
+func (s *Server) ParallelHash(ctx context.Context, req *hashpb.ParHashReq) (resp *hashpb.ParHashResp, err error) {
+
+	defer func() { err = errors.Wrapf(err, "ParallelHash()") }()
+	resp = &hashpb.ParHashResp{}
+	
+	for _, buf := range req.Data {
+		if err := s.sem.Acquire(ctx, 1); err != nil {
+			return nil, err
+		}
+		go func(buf []byte) {
+			defer s.sem.Release(1)
+			h := sha256.Sum256(buf)
+			resp.Hashes = append(resp.Hashes, h[:])
+		}(buf)
+	}
+	return resp, nil
+
+
 }
