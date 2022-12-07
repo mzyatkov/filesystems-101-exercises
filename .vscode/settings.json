@@ -46,6 +46,16 @@
             "cwd": "/home/mihail/Documents/filesystems-101-exercises/10-ext2-fuse",
             "binaryPath": "/home/mihail/Documents/filesystems-101-exercises/10-ext2-fuse/a.out",
             "binaryArgs": ["img" , "out"]
+        },
+        {
+            "cwd": "/home/mihail/Documents/filesystems-101-exercises/11-grpc",
+            "binaryPath": "/home/mihail/Documents/filesystems-101-exercises/11-grpc/bin/parhash",
+            "binaryArgs": []
+        },
+        {
+            "cwd": "/home/mihail/Documents/filesystems-101-exercises/11-grpc",
+            "binaryPath": "/home/mihail/Documents/filesystems-101-exercises/11-grpc/bin/hash",
+            "binaryArgs": []
         }
     ],
     "files.associations": {

@@ -6,9 +6,9 @@ import (
 	"github.com/pkg/errors"
 	"golang.org/x/sync/semaphore"
 
-	hashpb "fs101ex/pkg/gen/parhashsvc"
+	hashpb "fs101ex/pkg/gen/hashsvc"
+	parhashpb "fs101ex/pkg/gen/parhashsvc"	
 	"google.golang.org/grpc"
-	"crypto/sha256"
 	"net"
 	"sync"
 )
@@ -46,6 +46,7 @@ type Server struct {
 	conf Config
 
 	sem *semaphore.Weighted
+	mu sync.Mutex
 
 	stop context.CancelFunc
 	l    net.Listener
@@ -72,7 +73,7 @@ func (s *Server) Start(ctx context.Context) (err error) {
 	}
 
 	srv := grpc.NewServer()
-	hashpb.RegisterParallelHashSvcServer(srv , s)
+	parhashpb.RegisterParallelHashSvcServer(srv , s)
 
 	s.wg.Add(2)
 	go func() {
@@ -99,22 +100,42 @@ func (s *Server) Stop() {
 	s.wg.Wait()
 }
 
-func (s *Server) ParallelHash(ctx context.Context, req *hashpb.ParHashReq) (resp *hashpb.ParHashResp, err error) {
+func (s *Server) ParallelHash(ctx context.Context, req *parhashpb.ParHashReq) (resp *parhashpb.ParHashResp, err error) {
 
 	defer func() { err = errors.Wrapf(err, "ParallelHash()") }()
-	resp = &hashpb.ParHashResp{}
-	
-	for _, buf := range req.Data {
-		if err := s.sem.Acquire(ctx, 1); err != nil {
+	connections := make([]*grpc.ClientConn, len(s.conf.BackendAddrs))
+	clients := make([]hashpb.HashSvcClient, len(s.conf.BackendAddrs))
+	for i := range connections {
+		connections[i], err = grpc.Dial(s.conf.BackendAddrs[i], grpc.WithInsecure())
+		if err != nil {
 			return nil, err
 		}
-		go func(buf []byte) {
-			defer s.sem.Release(1)
-			h := sha256.Sum256(buf)
-			resp.Hashes = append(resp.Hashes, h[:])
-		}(buf)
+		clients[i] = hashpb.NewHashSvcClient(connections[i])
 	}
-	return resp, nil
-
-
+	defer func() {
+		for i := range connections {
+			connections[i].Close()
+		}
+	}()
+	var wg sync.WaitGroup
+	var hashes [][]byte = make([][]byte, len(req.Data))
+	for i := range req.Data {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			if err := s.sem.Acquire(ctx, 1); err != nil {
+				return
+			}
+			defer s.sem.Release(1)
+			hash, err := clients[i%len(s.conf.BackendAddrs)].Hash(ctx, &hashpb.HashReq{Data: req.Data[i]})
+			if err != nil {
+				return
+			}
+			s.mu.Lock()
+			hashes[i] = hash.Hash
+			s.mu.Unlock()
+		}(i)
+	}
+	wg.Wait()
+	return &parhashpb.ParHashResp{Hashes: hashes}, nil
 }
