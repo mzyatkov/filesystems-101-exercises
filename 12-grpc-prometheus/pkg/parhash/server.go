@@ -6,6 +6,10 @@ import (
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"golang.org/x/sync/semaphore"
+	
+	"net"
+	"sync"
+
 )
 
 type Config struct {
@@ -53,30 +57,49 @@ type Config struct {
 // Both performance counters must be placed to Prometheus namespace "parhash".
 type Server struct {
 	conf Config
+	counter prometheus.Counter 
+	subquery_durations *prometheus.HistogramVec
 
 	sem *semaphore.Weighted
+	stop context.CancelFunc
+	l    net.Listener
+	wg   sync.WaitGroup
 }
 
 func New(conf Config) *Server {
 	return &Server{
 		conf: conf,
 		sem:  semaphore.NewWeighted(int64(conf.Concurrency)),
+		counter: prometheus.NewCounter(prometheus.CounterOpts{
+			Namespace: "parhash",
+			Name: "nr_requests",
+			Help: "Number of requests",
+		}),
+		subquery_durations: prometheus.NewHistogramVec(prometheus.HistogramOpts{
+			Namespace: "parhash",
+			Name: "subquery_durations",
+			Help: "Subquery durations",
+			Buckets: prometheus.ExponentialBuckets(0.1, 10000, 24),
+		}, []string{"backend"}),
+
 	}
 }
 
 func (s *Server) Start(ctx context.Context) (err error) {
 	defer func() { err = errors.Wrap(err, "Start()") }()
 
-	/* implement me */
-
+	ctx, s.stop = context.WithCancel(ctx)
+	s.conf.Prom.MustRegister(s.counter)
+	s.conf.Prom.MustRegister(s.subquery_durations)
 	return nil
 }
 
 func (s *Server) ListenAddr() string {
-	/* implement me */
-	return ""
+	return s.l.Addr().String()
 }
 
 func (s *Server) Stop() {
-	/* implement me */
+	s.stop()
+	s.wg.Wait()
+	s.l.Close()
 }
