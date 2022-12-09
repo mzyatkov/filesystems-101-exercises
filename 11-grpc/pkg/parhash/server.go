@@ -103,38 +103,39 @@ func (s *Server) Stop() {
 func (s *Server) ParallelHash(ctx context.Context, req *parhashpb.ParHashReq) (resp *parhashpb.ParHashResp, err error) {
 
 	defer func() { err = errors.Wrapf(err, "ParallelHash()") }()
+	// sub-requests must be fanned out evenly
+	// across backends in the round-robin fashion.
+	// For example, if there are 2 backends and 5 buffers,
+	// then the buffers must be assigned to backends in this way:
+	//
+	//	backend 0: buffers 0, 2, and 4,
+	//	backend 1: buffers 1 and 3.	
+
 	connections := make([]*grpc.ClientConn, len(s.conf.BackendAddrs))
 	clients := make([]hashpb.HashSvcClient, len(s.conf.BackendAddrs))
-	for i := range connections {
-		connections[i], err = grpc.Dial(s.conf.BackendAddrs[i], grpc.WithInsecure())
+	for i, addr := range s.conf.BackendAddrs {
+		connections[i], err = grpc.Dial(addr, grpc.WithInsecure())
 		if err != nil {
 			return nil, err
 		}
 		clients[i] = hashpb.NewHashSvcClient(connections[i])
 	}
-	defer func() {
-		for i := range connections {
-			connections[i].Close()
-		}
-	}()
+
+	hashes := make([][]byte, len(req.Data))
 	var wg sync.WaitGroup
-	var hashes [][]byte = make([][]byte, len(req.Data))
-	for i := range req.Data {
-		wg.Add(1)
-		go func(i int) {
+	wg.Add(len(req.Data))
+	for i, data := range req.Data {
+		go func(i int, data []byte) {
 			defer wg.Done()
-			if err := s.sem.Acquire(ctx, 1); err != nil {
-				return
-			}
+			s.sem.Acquire(ctx, 1)
 			defer s.sem.Release(1)
-			hash, err := clients[i%len(s.conf.BackendAddrs)].Hash(ctx, &hashpb.HashReq{Data: req.Data[i]})
+			backend := i % len(s.conf.BackendAddrs)
+			hash, err := clients[backend].Hash(ctx, &hashpb.HashReq{Data: data})
 			if err != nil {
 				return
 			}
-			s.mu.Lock()
 			hashes[i] = hash.Hash
-			s.mu.Unlock()
-		}(i)
+		}(i, data)
 	}
 	wg.Wait()
 	return &parhashpb.ParHashResp{Hashes: hashes}, nil
