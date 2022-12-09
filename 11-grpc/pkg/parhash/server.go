@@ -49,6 +49,7 @@ type Server struct {
 
 	sem *semaphore.Weighted
 	mu sync.Mutex
+	counter int
 
 	stop context.CancelFunc
 	l    net.Listener
@@ -60,6 +61,7 @@ func New(conf Config) *Server {
 	return &Server{
 		conf: conf,
 		sem:  semaphore.NewWeighted(int64(conf.Concurrency)),
+		counter: 0,
 	}
 }
 
@@ -128,8 +130,11 @@ func (s *Server) ParallelHash(ctx context.Context, req *parhashpb.ParHashReq) (r
 	for i, buf := range req.Data {
 		i, buf := i, buf
 		wg.Go(ctx, func(ctx context.Context) error {
-			client := clients[i % len(clients)]
-			resp, err := client.Hash(ctx, &hashpb.HashReq{Data: buf})
+			resp, err := clients[s.counter%len(s.conf.BackendAddrs)].Hash(ctx, &hashpb.HashReq{Data: buf})
+			s.mu.Lock()
+			s.counter++	
+			s.mu.Unlock()
+
 			if err != nil {
 				return err
 			}
