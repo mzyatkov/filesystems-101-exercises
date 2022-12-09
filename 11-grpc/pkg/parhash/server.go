@@ -122,11 +122,10 @@ func (s *Server) ParallelHash(ctx context.Context, req *parhashpb.ParHashReq) (r
 	}
 
 	hashes := make([][]byte, len(req.Data))
-	var wg sync.WaitGroup
-	wg.Add(len(req.Data))
+	s.wg.Add(len(req.Data))
 	for i, data := range req.Data {
 		go func(i int, data []byte) {
-			defer wg.Done()
+			s.wg.Done()
 			s.sem.Acquire(ctx, 1)
 			defer s.sem.Release(1)
 			backend := i % len(s.conf.BackendAddrs)
@@ -137,6 +136,9 @@ func (s *Server) ParallelHash(ctx context.Context, req *parhashpb.ParHashReq) (r
 			hashes[i] = hash.Hash
 		}(i, data)
 	}
-	wg.Wait()
+	s.wg.Wait()
+	for _, conn := range connections {
+		conn.Close()
+	}
 	return &parhashpb.ParHashResp{Hashes: hashes}, nil
 }
