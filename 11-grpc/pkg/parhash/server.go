@@ -9,6 +9,8 @@ import (
 	hashpb "fs101ex/pkg/gen/hashsvc"
 	parhashpb "fs101ex/pkg/gen/parhashsvc"	
 	"google.golang.org/grpc"
+	"fs101ex/pkg/workgroup"
+
 	"net"
 	"sync"
 )
@@ -46,6 +48,7 @@ type Server struct {
 	conf Config
 
 	sem *semaphore.Weighted
+	mu sync.Mutex
 
 	stop context.CancelFunc
 	l    net.Listener
@@ -110,7 +113,6 @@ func (s *Server) ParallelHash(ctx context.Context, req *parhashpb.ParHashReq) (r
 	// sub-requests must be fanned out evenly
 
 
-	hashes := make([][]byte, len(req.Data))
 	clients := make([]hashpb.HashSvcClient, len(s.conf.BackendAddrs))
 	for i, addr := range s.conf.BackendAddrs {
 		conn, err := grpc.Dial(addr, grpc.WithInsecure())
@@ -120,27 +122,25 @@ func (s *Server) ParallelHash(ctx context.Context, req *parhashpb.ParHashReq) (r
 		clients[i] = hashpb.NewHashSvcClient(conn)
 	}
 
-	var wg sync.WaitGroup
+	wg := workgroup.New(workgroup.Config{Sem: s.sem})
+	hashes := make([][]byte, len(req.Data))
 
 	for i, buf := range req.Data {
-		wg.Add(1)
-		go func(i int, buf []byte) {
-			defer wg.Done()
-			s.sem.Acquire(ctx, 1)
-			defer s.sem.Release(1)
-
-			// round-robin
-			client := clients[i % len(clients)]
+		i, buf := i, buf
+		wg.Go(ctx, func(ctx context.Context) error {
+			client := clients[i%len(clients)]
 			resp, err := client.Hash(ctx, &hashpb.HashReq{Data: buf})
 			if err != nil {
-				return
+				return err
 			}
 			hashes[i] = resp.Hash
-		}(i, buf)
+			return nil
+		})
 	}
-	wg.Wait()
 
+	if err := wg.Wait(); err != nil {
+		return nil, err
+	}
+	
 	return &parhashpb.ParHashResp{Hashes: hashes}, nil
-
-
 }
