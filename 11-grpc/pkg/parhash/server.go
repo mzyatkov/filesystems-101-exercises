@@ -128,11 +128,13 @@ func (s *Server) ParallelHash(ctx context.Context, req *parhashpb.ParHashReq) (r
 	for i, buf := range req.Data {
 		i, buf := i, buf
 		wg.Go(ctx, func(ctx context.Context) error {
-			client := clients[i%len(clients)]
+			client := clients[i % len(clients)]
 			resp, err := client.Hash(ctx, &hashpb.HashReq{Data: buf})
 			if err != nil {
 				return err
 			}
+			s.mu.Lock()
+			defer s.mu.Unlock()
 			hashes[i] = resp.Hash
 			return nil
 		})
