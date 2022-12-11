@@ -2,10 +2,18 @@ package parhash
 
 import (
 	"context"
+	"time"
 
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"golang.org/x/sync/semaphore"
+
+	parhashpb "fs101ex/pkg/gen/parhashsvc"
+	hashpb "fs101ex/pkg/gen/hashsvc"
+	"fs101ex/pkg/workgroup"
+	"google.golang.org/grpc"
+
+
 	
 	"net"
 	"sync"
@@ -62,8 +70,10 @@ type Server struct {
 
 	sem *semaphore.Weighted
 	stop context.CancelFunc
-	l    net.Listener
-	wg   sync.WaitGroup
+	l net.Listener
+	wg sync.WaitGroup
+	mu sync.Mutex
+	index_counter int
 }
 
 func New(conf Config) *Server {
@@ -81,16 +91,39 @@ func New(conf Config) *Server {
 			Help: "Subquery durations",
 			Buckets: prometheus.ExponentialBuckets(0.1, 10000, 24),
 		}, []string{"backend"}),
-
+		index_counter: 0,
 	}
 }
 
 func (s *Server) Start(ctx context.Context) (err error) {
-	defer func() { err = errors.Wrap(err, "Start()") }()
+	defer func() { err = errors.Wrapf(err, "Start()") }()
 
 	ctx, s.stop = context.WithCancel(ctx)
+
+	s.l, err = net.Listen("tcp", s.conf.ListenAddr)
+	if err != nil {
+		return err
+	}
+
+	srv := grpc.NewServer()
+	parhashpb.RegisterParallelHashSvcServer(srv, s)
+
 	s.conf.Prom.MustRegister(s.counter)
 	s.conf.Prom.MustRegister(s.subquery_durations)
+
+	s.wg.Add(2)
+	go func() {
+		defer s.wg.Done()
+
+		srv.Serve(s.l)
+	}()
+	go func() {
+		defer s.wg.Done()
+
+		<-ctx.Done()
+		s.l.Close()
+	}()
+
 	return nil
 }
 
@@ -102,4 +135,52 @@ func (s *Server) Stop() {
 	s.stop()
 	s.wg.Wait()
 	s.l.Close()
+}
+
+
+func (s *Server) ParallelHash(ctx context.Context, req *parhashpb.ParHashReq) (resp *parhashpb.ParHashResp, err error) {
+	defer func() { err = errors.Wrapf(err, "ParallelHash()") }()
+	s.counter.Inc()
+	clients := make([]hashpb.HashSvcClient, len(s.conf.BackendAddrs))
+	connections := make([]*grpc.ClientConn, len(s.conf.BackendAddrs))
+	for i, addr := range s.conf.BackendAddrs {	
+		connections[i], err = grpc.Dial(addr, grpc.WithInsecure())
+		if err != nil {
+			return nil, err
+		}
+		defer connections[i].Close()
+		clients[i] = hashpb.NewHashSvcClient(connections[i])
+	}
+	var wg = workgroup.New(workgroup.Config{Sem : s.sem})
+	var hashes = make([][]byte, len(req.Data))
+	for i, data := range req.Data {
+		i, data := i, data
+		wg.Go(ctx, func(ctx context.Context) error {
+			var err error
+			s.mu.Lock()
+			index := s.index_counter
+			s.index_counter = (s.index_counter + 1) % len(s.conf.BackendAddrs)
+			s.mu.Unlock()
+			
+			start := time.Now()
+			resp, err := clients[index].Hash(ctx, &hashpb.HashReq{Data: data})
+			dt := time.Since(start)
+			
+			if err != nil {
+				return err
+			}
+			s.subquery_durations.WithLabelValues(s.conf.BackendAddrs[index]).Observe(dt.Seconds())
+			
+			s.mu.Lock()
+			hashes[i] = resp.Hash
+			s.mu.Unlock()
+
+			return nil
+		})
+	}
+	if err := wg.Wait(); err != nil {
+		return nil, err
+	}
+	return &parhashpb.ParHashResp{Hashes: hashes}, nil
+
 }
